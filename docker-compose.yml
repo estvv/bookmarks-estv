@@ -1,0 +1,53 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    container_name: bookmarks-backend-estv
+    expose:
+      - "8080"
+    networks:
+      - caddy_net
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DB_PATH=/app/data/bookmarks.db
+      - PORT=8080
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+      args:
+        - VITE_API_URL=/api
+    container_name: bookmarks-frontend-estv
+    expose:
+      - "80"
+    networks:
+      - caddy_net
+    depends_on:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
+
+networks:
+  caddy_net:
+    external: true
