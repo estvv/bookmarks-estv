@@ -3,7 +3,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validateContent } from '../middleware/contentLimit.js';
 import {
   getBookmarks, getBookmarkById, createBookmark, updateBookmark, deleteBookmark,
-  setBookmarkTags, generateBookmarkShareToken, disableBookmarkSharing,
+  generateBookmarkShareToken, disableBookmarkSharing,
   updateBookmarkPosition, BookmarkQuery
 } from '../db/index.js';
 import { fetchMeta } from '../services/fetchMeta.js';
@@ -20,7 +20,6 @@ function parseQuery(req: AuthRequest): BookmarkQuery {
   }
 
   if (q.search) query.search = (q.search as string).trim() || undefined;
-  if (q.tag_id) query.tagId = parseInt(q.tag_id as string);
   if (q.favorite === '1' || q.favorite === 'true') query.isFavorite = true;
   if (q.unread === '1' || q.unread === 'true') query.isRead = false;
   if (q.read === '1' || q.read === 'true') query.isRead = true;
@@ -60,7 +59,7 @@ router.post('/fetch-meta', authMiddleware, async (req: AuthRequest, res) => {
 
 // Auth required: create bookmark
 router.post('/', authMiddleware, validateContent, async (req: AuthRequest, res) => {
-  const { url, title, description, folder_id, is_favorite, is_read, tagIds, fetch_meta } = req.body;
+  const { url, title, description, folder_id, is_favorite, is_read, fetch_meta } = req.body;
 
   if (!url) {
     return res.status(400).json({ success: false, error: 'URL required' });
@@ -94,7 +93,6 @@ router.post('/', authMiddleware, validateContent, async (req: AuthRequest, res) 
     folder_id: folder_id ?? null,
     is_favorite,
     is_read,
-    tagIds
   });
 
   res.json({ success: true, data: bookmark });
@@ -103,33 +101,16 @@ router.post('/', authMiddleware, validateContent, async (req: AuthRequest, res) 
 // Auth required: update bookmark
 router.put('/:id', authMiddleware, validateContent, (req: AuthRequest, res) => {
   const id = parseInt(req.params.id);
-  const { tagIds, ...updates } = req.body;
-
+  const updates = req.body;
   const bookmark = updateBookmark(id, updates);
   if (!bookmark) return res.status(404).json({ success: false, error: 'Bookmark not found' });
-
-  if (tagIds !== undefined && Array.isArray(tagIds)) {
-    setBookmarkTags(id, tagIds);
-  }
-
-  res.json({ success: true, data: getBookmarkById(id) });
+  res.json({ success: true, data: bookmark });
 });
 
 // Auth required: delete bookmark
 router.delete('/:id', authMiddleware, (req: AuthRequest, res) => {
   deleteBookmark(parseInt(req.params.id));
   res.json({ success: true });
-});
-
-// Auth required: set tags
-router.post('/:id/tags', authMiddleware, (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  const { tagIds } = req.body;
-  if (!Array.isArray(tagIds)) {
-    return res.status(400).json({ success: false, error: 'tagIds must be an array' });
-  }
-  setBookmarkTags(id, tagIds);
-  res.json({ success: true, data: getBookmarkById(id) });
 });
 
 // Auth required: share bookmark

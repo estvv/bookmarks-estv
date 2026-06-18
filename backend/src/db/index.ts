@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
-import type { Bookmark, Folder, Tag, BookmarkWithTags } from '../types/index.js';
+import type { Bookmark, Folder, BookmarkWithFolder } from '../types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,26 +25,23 @@ export function initDatabase() {
   console.log('Database initialized');
 }
 
-function attachTags(bookmark: Bookmark): BookmarkWithTags {
-  const tags = db.prepare(`
-    SELECT t.* FROM tags t
-    JOIN bookmark_tags bt ON bt.tag_id = t.id
-    WHERE bt.bookmark_id = ?
-    ORDER BY t.name
-  `).all(bookmark.id) as Tag[];
-  return { ...bookmark, tags };
+function attachFolder(bookmark: Bookmark): BookmarkWithFolder {
+  let folder: Folder | null = null;
+  if (bookmark.folder_id) {
+    folder = db.prepare('SELECT * FROM folders WHERE id = ?').get(bookmark.folder_id) as Folder | undefined || null;
+  }
+  return { ...bookmark, folder };
 }
 
 export interface BookmarkQuery {
   folderId?: number | null;
   search?: string;
-  tagId?: number;
   isFavorite?: boolean;
   isRead?: boolean | null;
   sort?: 'created_desc' | 'created_asc' | 'title_asc' | 'title_desc' | 'updated_desc';
 }
 
-export function getBookmarks(query: BookmarkQuery = {}): BookmarkWithTags[] {
+export function getBookmarks(query: BookmarkQuery = {}): BookmarkWithFolder[] {
   const conditions: string[] = [];
   const params: any[] = [];
 
@@ -61,11 +58,6 @@ export function getBookmarks(query: BookmarkQuery = {}): BookmarkWithTags[] {
     conditions.push('(title LIKE ? OR description LIKE ? OR url LIKE ?)');
     const term = `%${query.search}%`;
     params.push(term, term, term);
-  }
-
-  if (query.tagId) {
-    conditions.push('id IN (SELECT bookmark_id FROM bookmark_tags WHERE tag_id = ?)');
-    params.push(query.tagId);
   }
 
   if (query.isFavorite) {
@@ -92,19 +84,19 @@ export function getBookmarks(query: BookmarkQuery = {}): BookmarkWithTags[] {
   }
 
   const bookmarks = db.prepare(sql).all(...params) as Bookmark[];
-  return bookmarks.map(attachTags);
+  return bookmarks.map(attachFolder);
 }
 
-export function getBookmarkById(id: number): BookmarkWithTags | undefined {
+export function getBookmarkById(id: number): BookmarkWithFolder | undefined {
   const bookmark = db.prepare('SELECT * FROM bookmarks WHERE id = ?').get(id) as Bookmark | undefined;
   if (!bookmark) return undefined;
-  return attachTags(bookmark);
+  return attachFolder(bookmark);
 }
 
-export function getBookmarkByShareToken(token: string): BookmarkWithTags | undefined {
+export function getBookmarkByShareToken(token: string): BookmarkWithFolder | undefined {
   const bookmark = db.prepare('SELECT * FROM bookmarks WHERE share_token = ? AND is_shared = 1').get(token) as Bookmark | undefined;
   if (!bookmark) return undefined;
-  return attachTags(bookmark);
+  return attachFolder(bookmark);
 }
 
 export interface CreateBookmarkInput {
@@ -116,10 +108,9 @@ export interface CreateBookmarkInput {
   folder_id?: number | null;
   is_favorite?: boolean;
   is_read?: boolean;
-  tagIds?: number[];
 }
 
-export function createBookmark(input: CreateBookmarkInput): BookmarkWithTags {
+export function createBookmark(input: CreateBookmarkInput): BookmarkWithFolder {
   if (!input.url) throw new Error('URL required');
 
   const folderBookmarks = getBookmarks({ folderId: input.folder_id ?? undefined });
@@ -141,13 +132,7 @@ export function createBookmark(input: CreateBookmarkInput): BookmarkWithTags {
     maxPosition + 1
   );
 
-  const id = result.lastInsertRowid as number;
-
-  if (input.tagIds && input.tagIds.length > 0) {
-    setBookmarkTags(id, input.tagIds);
-  }
-
-  return getBookmarkById(id)!;
+  return getBookmarkById(result.lastInsertRowid as number)!;
 }
 
 export function updateBookmark(id: number, updates: Partial<{
@@ -160,7 +145,7 @@ export function updateBookmark(id: number, updates: Partial<{
   is_favorite: boolean;
   is_read: boolean;
   position: number;
-}>): BookmarkWithTags | undefined {
+}>): BookmarkWithFolder | undefined {
   const fields: string[] = [];
   const values: any[] = [];
 
@@ -196,14 +181,6 @@ export function deleteBookmark(id: number): void {
   db.prepare('DELETE FROM bookmarks WHERE id = ?').run(id);
 }
 
-export function setBookmarkTags(bookmarkId: number, tagIds: number[]): void {
-  db.prepare('DELETE FROM bookmark_tags WHERE bookmark_id = ?').run(bookmarkId);
-  const stmt = db.prepare('INSERT OR IGNORE INTO bookmark_tags (bookmark_id, tag_id) VALUES (?, ?)');
-  for (const tagId of tagIds) {
-    stmt.run(bookmarkId, tagId);
-  }
-}
-
 export function generateBookmarkShareToken(id: number): string {
   const token = uuidv4();
   db.prepare('UPDATE bookmarks SET share_token = ?, is_shared = 1 WHERE id = ?').run(token, id);
@@ -222,23 +199,18 @@ export function countBookmarks(): number {
   return (db.prepare('SELECT COUNT(*) as c FROM bookmarks').get() as { c: number }).c;
 }
 
-export function getBookmarksByFolder(folderId: number): BookmarkWithTags[] {
+export function getBookmarksByFolder(folderId: number): BookmarkWithFolder[] {
   return getBookmarks({ folderId });
 }
 
-export function getBookmarksForExport(): BookmarkWithTags[] {
+export function getBookmarksForExport(): BookmarkWithFolder[] {
   const bookmarks = db.prepare('SELECT * FROM bookmarks ORDER BY folder_id, position').all() as Bookmark[];
-  return bookmarks.map(attachTags);
+  return bookmarks.map(attachFolder);
 }
 
-export function importBookmark(input: CreateBookmarkInput): BookmarkWithTags {
+export function importBookmark(input: CreateBookmarkInput): BookmarkWithFolder {
   const existing = db.prepare('SELECT id FROM bookmarks WHERE url = ?').get(input.url) as { id: number } | undefined;
   if (existing) {
-    if (input.tagIds && input.tagIds.length > 0) {
-      const currentTags = db.prepare('SELECT tag_id FROM bookmark_tags WHERE bookmark_id = ?').all(existing.id) as { tag_id: number }[];
-      const merged = Array.from(new Set([...currentTags.map(t => t.tag_id), ...input.tagIds]));
-      setBookmarkTags(existing.id, merged);
-    }
     return getBookmarkById(existing.id)!;
   }
   return createBookmark(input);
@@ -302,47 +274,4 @@ export function getChildFolders(parentId: number): Folder[] {
 
 export function countBookmarksInFolder(folderId: number): number {
   return (db.prepare('SELECT COUNT(*) as c FROM bookmarks WHERE folder_id = ?').get(folderId) as { c: number }).c;
-}
-
-export function getTags(): Tag[] {
-  return db.prepare('SELECT * FROM tags ORDER BY name COLLATE NOCASE').all() as Tag[];
-}
-
-export function getTagById(id: number): Tag | undefined {
-  return db.prepare('SELECT * FROM tags WHERE id = ?').get(id) as Tag | undefined;
-}
-
-export function getTagByName(name: string): Tag | undefined {
-  return db.prepare('SELECT * FROM tags WHERE name = ? COLLATE NOCASE').get(name) as Tag | undefined;
-}
-
-export function createTag(name: string, color?: string): Tag {
-  const stmt = db.prepare('INSERT INTO tags (name, color) VALUES (?, ?)');
-  const result = stmt.run(name, color || null);
-  return db.prepare('SELECT * FROM tags WHERE id = ?').get(result.lastInsertRowid) as Tag;
-}
-
-export function updateTag(id: number, updates: Partial<Pick<Tag, 'name' | 'color'>>): Tag | undefined {
-  const fields: string[] = [];
-  const values: any[] = [];
-  if (updates.name !== undefined) { fields.push('name = ?'); values.push(updates.name); }
-  if (updates.color !== undefined) { fields.push('color = ?'); values.push(updates.color); }
-  if (fields.length === 0) return getTagById(id);
-  values.push(id);
-  db.prepare(`UPDATE tags SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-  return getTagById(id);
-}
-
-export function deleteTag(id: number): void {
-  db.prepare('DELETE FROM tags WHERE id = ?').run(id);
-}
-
-export function getOrCreateTag(name: string, color?: string): Tag {
-  const existing = getTagByName(name);
-  if (existing) return existing;
-  return createTag(name, color);
-}
-
-export function countBookmarksForTag(tagId: number): number {
-  return (db.prepare('SELECT COUNT(*) as c FROM bookmark_tags WHERE tag_id = ?').get(tagId) as { c: number }).c;
 }

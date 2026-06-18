@@ -13,7 +13,6 @@ interface FolderData {
     favicon: string | null;
     image: string | null;
     position: number;
-    tags: Array<{ id: number; name: string; color: string | null }>;
     created_at: string;
   }>;
   childFolders: Array<{ id: number; name: string; share_token: string | null; is_shared: number }>;
@@ -28,7 +27,6 @@ interface BookmarkData {
     description: string;
     favicon: string | null;
     image: string | null;
-    tags: Array<{ id: number; name: string; color: string | null }>;
     created_at: string;
   };
 }
@@ -106,19 +104,6 @@ export function SharedView({ kind }: { kind: 'folder' | 'bookmark' }) {
           {b.description && (
             <p className="text-sm text-neutral-700 mb-4 whitespace-pre-wrap">{b.description}</p>
           )}
-          {b.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {b.tags.map(t => (
-                <span
-                  key={t.id}
-                  className="px-2 py-0.5 text-xs rounded border"
-                  style={{ color: t.color || '#525252', borderColor: t.color || '#e5e5e5' }}
-                >
-                  #{t.name}
-                </span>
-              ))}
-            </div>
-          )}
           <div className="mt-6">
             <a
               href={b.url}
@@ -178,19 +163,6 @@ export function SharedView({ kind }: { kind: 'folder' | 'bookmark' }) {
                     </a>
                     <div className="text-xs text-neutral-500 mt-0.5">{hostname(b.url)}</div>
                     {b.description && <p className="text-xs text-neutral-600 mt-1 line-clamp-2">{b.description}</p>}
-                    {b.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {b.tags.map(t => (
-                          <span
-                            key={t.id}
-                            className="px-1.5 py-0.5 text-xs rounded border"
-                            style={{ color: t.color || '#525252', borderColor: t.color || '#e5e5e5' }}
-                          >
-                            #{t.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

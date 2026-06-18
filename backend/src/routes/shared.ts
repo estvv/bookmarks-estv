@@ -20,7 +20,6 @@ router.get('/folder/:token', (req, res) => {
     favicon: b.favicon,
     image: b.image,
     position: b.position,
-    tags: (b.tags || []).map(t => ({ id: t.id, name: t.name, color: t.color })),
     created_at: b.created_at
   }));
 
@@ -58,7 +57,6 @@ router.get('/bookmark/:token', (req, res) => {
         description: bookmark.description,
         favicon: bookmark.favicon,
         image: bookmark.image,
-        tags: (bookmark.tags || []).map(t => ({ id: t.id, name: t.name, color: t.color })),
         created_at: bookmark.created_at
       }
     }

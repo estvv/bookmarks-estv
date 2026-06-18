@@ -8,17 +8,15 @@ import { BookmarkCard } from './BookmarkCard';
 import { BookmarkForm } from './BookmarkForm';
 
 export function BookmarkListView() {
-  const { bookmarks, folders, tags, refreshData, activeFolderId, activeTagId } = useData();
+  const { bookmarks, folders, refreshData, activeFolderId } = useData();
   const navigate = useNavigate();
   const authed = isAuthenticated();
   const [showAddForm, setShowAddForm] = useState(false);
 
   const activeFolder = folders.find(f => f.id === activeFolderId);
-  const activeTag = tags.find(t => t.id === activeTagId);
 
   let title = 'All bookmarks';
   if (activeFolder) title = activeFolder.name;
-  else if (activeTag) title = `#${activeTag.name}`;
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this bookmark?')) return;
@@ -97,7 +95,6 @@ export function BookmarkListView() {
       {showAddForm && authed && (
         <BookmarkForm
           folders={folders}
-          tags={tags}
           defaultFolderId={typeof activeFolderId === 'number' ? activeFolderId : undefined}
           onClose={() => setShowAddForm(false)}
           onSaved={() => {

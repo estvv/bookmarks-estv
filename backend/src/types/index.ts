@@ -4,6 +4,7 @@ export interface Folder {
   parent_id: number | null;
   share_token: string | null;
   is_shared: number;
+  bookmark_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -25,15 +26,8 @@ export interface Bookmark {
   updated_at: string;
 }
 
-export interface Tag {
-  id: number;
-  name: string;
-  color: string | null;
-  created_at: string;
-}
-
-export interface BookmarkWithTags extends Bookmark {
-  tags: Tag[];
+export interface BookmarkWithFolder extends Bookmark {
+  folder: Folder | null;
 }
 
 export interface AuthRequest extends Request {

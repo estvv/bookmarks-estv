@@ -1,19 +1,16 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { bookmarksApi, foldersApi, tagsApi } from '../utils/api';
-import type { Bookmark, Folder, Tag, SortOption } from '../types';
+import { bookmarksApi, foldersApi } from '../utils/api';
+import type { Bookmark, Folder, SortOption } from '../types';
 
 interface DataContextValue {
   bookmarks: Bookmark[];
   folders: Folder[];
-  tags: Tag[];
   loading: boolean;
   refreshData: () => Promise<void>;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   activeFolderId: number | null | undefined;
   setActiveFolderId: (id: number | null | undefined) => void;
-  activeTagId: number | null;
-  setActiveTagId: (id: number | null) => void;
   showFavoritesOnly: boolean;
   setShowFavoritesOnly: (v: boolean) => void;
   showUnreadOnly: boolean;
@@ -27,11 +24,9 @@ const DataContext = createContext<DataContextValue | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFolderId, setActiveFolderId] = useState<number | null | undefined>(undefined);
-  const [activeTagId, setActiveTagId] = useState<number | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [sort, setSort] = useState<SortOption>('created_desc');
@@ -43,16 +38,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const refreshData = async () => {
     try {
       setLoading(true);
-      const [foldersData, tagsData] = await Promise.all([
-        foldersApi.list(),
-        tagsApi.list()
-      ]);
+      const foldersData = await foldersApi.list();
       setFolders(foldersData || []);
-      setTags(tagsData || []);
     } catch (error) {
       console.error('Failed to load data:', error);
       setFolders([]);
-      setTags([]);
     } finally {
       setLoading(false);
     }
@@ -66,7 +56,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const data = await bookmarksApi.list({
           search: searchQuery || undefined,
           folderId: activeFolderId,
-          tagId: activeTagId || undefined,
           favorite: showFavoritesOnly,
           unread: showUnreadOnly,
           sort,
@@ -83,21 +72,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [searchQuery, activeFolderId, activeTagId, showFavoritesOnly, showUnreadOnly, sort]);
+  }, [searchQuery, activeFolderId, showFavoritesOnly, showUnreadOnly, sort]);
 
   return (
     <DataContext.Provider value={{
       bookmarks,
       folders,
-      tags,
       loading,
       refreshData,
       searchQuery,
       setSearchQuery,
       activeFolderId,
       setActiveFolderId,
-      activeTagId,
-      setActiveTagId,
       showFavoritesOnly,
       setShowFavoritesOnly,
       showUnreadOnly,

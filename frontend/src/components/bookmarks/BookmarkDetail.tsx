@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { bookmarksApi, tagsApi } from '../../utils/api';
+import { bookmarksApi } from '../../utils/api';
 import { isAuthenticated } from '../../utils/auth';
 import { useData } from '../../contexts/DataContext';
 import type { Bookmark } from '../../types';
@@ -13,7 +13,7 @@ export function BookmarkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { folders, tags, refreshData } = useData();
+  const { folders, refreshData } = useData();
   const authed = isAuthenticated();
   const isNew = id === 'new';
 
@@ -29,8 +29,6 @@ export function BookmarkDetail() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [folderId, setFolderId] = useState<number | null>(null);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [newTag, setNewTag] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [isRead, setIsRead] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,7 +48,6 @@ export function BookmarkDetail() {
         setTitle(b.title);
         setDescription(b.description || '');
         setFolderId(b.folder_id);
-        setSelectedTagIds((b.tags || []).map(t => t.id));
         setIsFavorite(!!b.is_favorite);
         setIsRead(!!b.is_read);
       } catch (err) {
@@ -60,23 +57,6 @@ export function BookmarkDetail() {
     };
     load();
   }, [id]);
-
-  const toggleTag = (tagId: number) => {
-    setSelectedTagIds(prev => prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]);
-  };
-
-  const handleAddNewTag = async () => {
-    const name = newTag.trim();
-    if (!name) return;
-    try {
-      const tag = await tagsApi.findOrCreate(name);
-      if (!selectedTagIds.includes(tag.id)) setSelectedTagIds(prev => [...prev, tag.id]);
-      setNewTag('');
-      refreshData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleSave = async () => {
     if (!url.trim()) {
@@ -94,7 +74,6 @@ export function BookmarkDetail() {
           folder_id: folderId,
           is_favorite: isFavorite,
           is_read: isRead,
-          tagIds: selectedTagIds,
         });
         refreshData();
         navigate(`/bookmark/${created.id}`);
@@ -106,7 +85,6 @@ export function BookmarkDetail() {
           folder_id: folderId,
           is_favorite: isFavorite,
           is_read: isRead,
-          tagIds: selectedTagIds,
         });
         setBookmark(updated);
         refreshData();
@@ -191,22 +169,6 @@ export function BookmarkDetail() {
               <p className="text-sm text-neutral-700 whitespace-pre-wrap">{bookmark.description}</p>
             </div>
           )}
-          {bookmark.tags.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Tags</div>
-              <div className="flex flex-wrap gap-1.5">
-                {bookmark.tags.map(t => (
-                  <span
-                    key={t.id}
-                    className="px-2 py-0.5 text-xs rounded border"
-                    style={{ color: t.color || '#525252', borderColor: t.color || '#e5e5e5' }}
-                  >
-                    #{t.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
           <div className="pt-4">
             <a
               href={bookmark.url}
@@ -265,46 +227,6 @@ export function BookmarkDetail() {
             rows={5}
             className="w-full px-3 py-2 border border-neutral-200 rounded text-sm focus:outline-none focus:border-neutral-500 resize-y"
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Tags</label>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {tags.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => toggleTag(t.id)}
-                className={`px-2 py-1 text-xs rounded border transition-colors ${
-                  selectedTagIds.includes(t.id)
-                    ? 'bg-neutral-900 text-white border-neutral-900'
-                    : 'text-neutral-600 border-neutral-200 hover:bg-neutral-100 bg-white'
-                }`}
-                style={!selectedTagIds.includes(t.id) && t.color ? { color: t.color, borderColor: t.color } : undefined}
-              >
-                #{t.name}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleAddNewTag(); }
-              }}
-              placeholder="New tag name..."
-              className="flex-1 px-3 py-1.5 border border-neutral-200 rounded text-sm focus:outline-none focus:border-neutral-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddNewTag}
-              className="px-3 py-1.5 text-sm border border-neutral-200 rounded hover:bg-neutral-100"
-            >
-              Add tag
-            </button>
-          </div>
         </div>
 
         <div className="flex items-center gap-6">

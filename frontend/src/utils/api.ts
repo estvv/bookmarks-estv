@@ -1,5 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
-import type { Bookmark, Folder, Tag, PageMeta, SortOption } from '../types';
+import type { Bookmark, Folder, PageMeta, SortOption } from '../types';
 
 // Public request: no auth token attached, no redirect on 401. Used for reads.
 async function publicRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -23,7 +23,6 @@ async function publicRequest<T>(endpoint: string, options?: RequestInit): Promis
 }
 
 // Authenticated request: attaches Bearer token, surfaces auth errors to caller.
-// Does NOT auto-redirect — callers decide how to handle 401 (e.g. prompt login).
 async function authRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('token');
 
@@ -56,23 +55,9 @@ async function authRequest<T>(endpoint: string, options?: RequestInit): Promise<
   return data.data;
 }
 
-// Backwards-compat alias used by older callers; treats 401 as redirect-worthy.
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  try {
-    return await authRequest(endpoint, options);
-  } catch (err: any) {
-    if (err?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    throw err;
-  }
-}
-
 export interface BookmarkListParams {
   search?: string;
   folderId?: number | null;
-  tagId?: number;
   favorite?: boolean;
   unread?: boolean;
   read?: boolean;
@@ -85,7 +70,6 @@ function buildQuery(params: BookmarkListParams): string {
   if (params.folderId !== undefined) {
     q.set('folder_id', params.folderId === null ? 'null' : String(params.folderId));
   }
-  if (params.tagId) q.set('tag_id', String(params.tagId));
   if (params.favorite) q.set('favorite', '1');
   if (params.unread) q.set('unread', '1');
   if (params.read) q.set('read', '1');
@@ -111,7 +95,6 @@ export const bookmarksApi = {
     folder_id?: number | null;
     is_favorite?: boolean;
     is_read?: boolean;
-    tagIds?: number[];
     fetch_meta?: boolean;
   }): Promise<Bookmark> =>
     authRequest('/bookmarks', { method: 'POST', body: JSON.stringify(bookmark) }),
@@ -128,14 +111,10 @@ export const bookmarksApi = {
     folder_id: number | null;
     is_favorite: boolean;
     is_read: boolean;
-    tagIds: number[];
   }>): Promise<Bookmark> =>
     authRequest(`/bookmarks/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
 
   delete: (id: number): Promise<void> => authRequest(`/bookmarks/${id}`, { method: 'DELETE' }),
-
-  setTags: (id: number, tagIds: number[]): Promise<Bookmark> =>
-    authRequest(`/bookmarks/${id}/tags`, { method: 'POST', body: JSON.stringify({ tagIds }) }),
 
   share: (id: number): Promise<{ share_token: string }> =>
     authRequest(`/bookmarks/${id}/share`, { method: 'POST' }),
@@ -161,23 +140,9 @@ export const foldersApi = {
   unshare: (id: number): Promise<void> => authRequest(`/folders/${id}/share`, { method: 'DELETE' }),
 };
 
-export const tagsApi = {
-  // Public read
-  list: (): Promise<Tag[]> => publicRequest('/tags'),
-
-  // Auth required
-  create: (tag: { name: string; color?: string }): Promise<Tag> =>
-    authRequest('/tags', { method: 'POST', body: JSON.stringify(tag) }),
-  findOrCreate: (name: string, color?: string): Promise<Tag> =>
-    authRequest('/tags/find-or-create', { method: 'POST', body: JSON.stringify({ name, color }) }),
-  update: (id: number, updates: { name?: string; color?: string }): Promise<Tag> =>
-    authRequest(`/tags/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
-  delete: (id: number): Promise<void> => authRequest(`/tags/${id}`, { method: 'DELETE' }),
-};
-
 export const ioApi = {
   // Public read
-  exportJson: (): Promise<{ folders: Folder[]; tags: Tag[]; bookmarks: any[] }> =>
+  exportJson: (): Promise<{ folders: Folder[]; bookmarks: Bookmark[] }> =>
     publicRequest('/io/export?format=json'),
   exportNetscape: async (): Promise<string> => {
     const response = await fetch(`${API_BASE}/io/export?format=netscape`);
@@ -201,7 +166,6 @@ export const sharedApi = {
       favicon: string | null;
       image: string | null;
       position: number;
-      tags: Array<{ id: number; name: string; color: string | null }>;
       created_at: string;
     }>;
     childFolders: Array<{ id: number; name: string; share_token: string | null; is_shared: number }>;
@@ -216,7 +180,6 @@ export const sharedApi = {
       description: string;
       favicon: string | null;
       image: string | null;
-      tags: Array<{ id: number; name: string; color: string | null }>;
       created_at: string;
     };
   }> => publicRequest(`/shared/bookmark/${token}`),

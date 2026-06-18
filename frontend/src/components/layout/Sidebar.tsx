@@ -10,8 +10,7 @@ export function Sidebar() {
   const location = useLocation();
   const authed = isAuthenticated();
   const {
-    folders, tags, activeFolderId, setActiveFolderId,
-    activeTagId, setActiveTagId, refreshData
+    folders, activeFolderId, setActiveFolderId, refreshData
   } = useData();
 
   const [showNewFolder, setShowNewFolder] = useState(false);
@@ -73,23 +72,12 @@ export function Sidebar() {
 
   const selectAll = () => {
     setActiveFolderId(undefined);
-    setActiveTagId(null);
     navigate('/');
   };
 
   const selectFolder = (id: number) => {
     setActiveFolderId(id);
-    setActiveTagId(null);
     navigate(`/folder/${id}`);
-  };
-
-  const selectTag = (id: number | null) => {
-    setActiveTagId(id);
-    if (id === null) {
-      navigate('/');
-    } else {
-      navigate(`/tag/${id}`);
-    }
   };
 
   const buildTree = (folders: Folder[], parentId: number | null): Folder[] =>
@@ -185,7 +173,7 @@ export function Sidebar() {
           <button
             onClick={selectAll}
             className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-2 ${
-              activeFolderId === undefined && !activeTagId
+              activeFolderId === undefined
                 ? 'bg-neutral-100 text-neutral-900'
                 : 'text-neutral-600 hover:bg-neutral-50'
             }`}
@@ -232,31 +220,6 @@ export function Sidebar() {
               {buildTree(folders, null).map(f => renderFolder(f, 0))}
             </div>
           )}
-
-          <div className="mt-6">
-            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider px-3 mb-2 block">Tags</span>
-            {tags.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-neutral-400">No tags yet.</div>
-            ) : (
-              <div className="flex flex-wrap gap-1.5 px-3">
-                {tags.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => selectTag(activeTagId === t.id ? null : t.id)}
-                    className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                      activeTagId === t.id
-                        ? 'bg-neutral-900 text-white border-neutral-900'
-                        : 'text-neutral-600 border-neutral-200 hover:bg-neutral-50'
-                    }`}
-                    style={activeTagId !== t.id && t.color ? { color: t.color, borderColor: t.color } : undefined}
-                  >
-                    {t.name}
-                    <span className="opacity-60 ml-1">{t.bookmark_count ?? 0}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </aside>

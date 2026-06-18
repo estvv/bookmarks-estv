@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import {
-  getBookmarksForExport, getFolders, getTags, getOrCreateTag, importBookmark
+  getBookmarksForExport, getFolders, importBookmark
 } from '../db/index.js';
-import type { BookmarkWithTags, Folder, Tag } from '../types/index.js';
+import type { BookmarkWithFolder, Folder } from '../types/index.js';
 
 const router = Router();
 
@@ -34,7 +34,7 @@ function buildFolderTree(folders: Folder[]): Map<number | null, Folder[]> {
 
 function renderFolderNetscape(
   folder: Folder,
-  bookmarksByFolder: Map<number | null, BookmarkWithTags[]>,
+  bookmarksByFolder: Map<number | null, BookmarkWithFolder[]>,
   folderTree: Map<number | null, Folder[]>,
   depth: number
 ): string {
@@ -44,9 +44,7 @@ function renderFolderNetscape(
 
   const bookmarks = bookmarksByFolder.get(folder.id) || [];
   for (const b of bookmarks) {
-    const tags = (b.tags || []).map(t => t.name).join(',');
-    const tagAttr = tags ? ` TAGS="${escapeHtml(tags)}"` : '';
-    out += `${indent}    <DT><A HREF="${escapeHtml(b.url)}" ADD_DATE="${formatNetscapeDate(b.created_at)}"${tagAttr}>${escapeHtml(b.title)}</A>\n`;
+    out += `${indent}    <DT><A HREF="${escapeHtml(b.url)}" ADD_DATE="${formatNetscapeDate(b.created_at)}">${escapeHtml(b.title)}</A>\n`;
     if (b.description) {
       out += `${indent}    <DD>${escapeHtml(b.description)}\n`;
     }
@@ -66,7 +64,6 @@ router.get('/export', (req: AuthRequest, res) => {
   const format = (req.query.format as string) || 'json';
 
   const folders = getFolders();
-  const tags = getTags();
   const bookmarks = getBookmarksForExport();
 
   if (format === 'json') {
@@ -74,18 +71,13 @@ router.get('/export', (req: AuthRequest, res) => {
       success: true,
       data: {
         folders,
-        tags,
-        bookmarks: bookmarks.map(b => ({
-          ...b,
-          tagIds: (b.tags || []).map(t => t.id),
-          tags: undefined
-        }))
+        bookmarks
       }
     });
   }
 
   if (format === 'netscape' || format === 'html') {
-    const bookmarksByFolder = new Map<number | null, BookmarkWithTags[]>();
+    const bookmarksByFolder = new Map<number | null, BookmarkWithFolder[]>();
     for (const b of bookmarks) {
       const key = b.folder_id ?? null;
       const list = bookmarksByFolder.get(key) || [];
@@ -104,9 +96,7 @@ router.get('/export', (req: AuthRequest, res) => {
 
     const rootBookmarks = bookmarksByFolder.get(null) || [];
     for (const b of rootBookmarks) {
-      const tagStr = (b.tags || []).map(t => t.name).join(',');
-      const tagAttr = tagStr ? ` TAGS="${escapeHtml(tagStr)}"` : '';
-      html += `    <DT><A HREF="${escapeHtml(b.url)}" ADD_DATE="${formatNetscapeDate(b.created_at)}"${tagAttr}>${escapeHtml(b.title)}</A>\n`;
+      html += `    <DT><A HREF="${escapeHtml(b.url)}" ADD_DATE="${formatNetscapeDate(b.created_at)}">${escapeHtml(b.title)}</A>\n`;
       if (b.description) {
         html += `    <DD>${escapeHtml(b.description)}\n`;
       }
@@ -127,8 +117,8 @@ router.get('/export', (req: AuthRequest, res) => {
   return res.status(400).json({ success: false, error: 'Unknown format. Use json or netscape.' });
 });
 
-function parseNetscape(html: string): { url: string; title: string; description?: string; tags?: string; folderPath: string[] }[] {
-  const results: { url: string; title: string; description?: string; tags?: string; folderPath: string[] }[] = [];
+function parseNetscape(html: string): { url: string; title: string; description?: string; folderPath: string[] }[] {
+  const results: { url: string; title: string; description?: string; folderPath: string[] }[] = [];
 
   const lines = html.split(/\r?\n/);
   let folderStack: string[] = [];
@@ -168,12 +158,9 @@ function parseNetscape(html: string): { url: string; title: string; description?
     if (a) {
       const url = a[1];
       const title = a[2].trim();
-      const tagMatch = line.match(/TAGS="([^"]*)"/i);
-      const tags = tagMatch ? tagMatch[1] : undefined;
       results.push({
         url,
         title: title || url,
-        tags,
         folderPath: [...folderStack]
       });
       continue;
@@ -228,26 +215,17 @@ router.post('/import', authMiddleware, async (req: AuthRequest, res) => {
           folderId = parentId;
         }
 
-        const tagIds: number[] = [];
-        if (item.tags) {
-          for (const tagName of item.tags.split(',').map(s => s.trim()).filter(Boolean)) {
-            tagIds.push(getOrCreateTag(tagName).id);
-          }
-        }
-
         importBookmark({
           url: item.url,
           title: item.title,
           description: item.description,
           folder_id: folderId,
-          tagIds
         });
         imported++;
       }
     } else if (format === 'json' || (typeof data === 'object' && !Array.isArray(data))) {
       const payload = typeof data === 'string' ? JSON.parse(data) : data;
       const folders: any[] = payload.folders || [];
-      const tags: any[] = payload.tags || [];
       const bookmarks: any[] = payload.bookmarks || [];
 
       const { createFolder } = await import('../db/index.js');
@@ -265,14 +243,7 @@ router.post('/import', authMiddleware, async (req: AuthRequest, res) => {
         folderIdMap.set(f.id, newFolder.id);
       }
 
-      const tagIdMap = new Map<number, number>();
-      for (const t of tags) {
-        const newTag = getOrCreateTag(t.name, t.color);
-        tagIdMap.set(t.id, newTag.id);
-      }
-
       for (const b of bookmarks) {
-        const tagIds = (b.tagIds || []).map((id: number) => tagIdMap.get(id)).filter(Boolean) as number[];
         importBookmark({
           url: b.url,
           title: b.title,
@@ -282,7 +253,6 @@ router.post('/import', authMiddleware, async (req: AuthRequest, res) => {
           folder_id: b.folder_id ? oldToNewFolder(b.folder_id) : null,
           is_favorite: !!b.is_favorite,
           is_read: !!b.is_read,
-          tagIds
         });
         imported++;
       }

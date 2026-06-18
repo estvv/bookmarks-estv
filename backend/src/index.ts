@@ -5,7 +5,6 @@ import { initDatabase } from './db/index.js';
 import authRoutes from './routes/auth.js';
 import bookmarksRoutes from './routes/bookmarks.js';
 import foldersRoutes from './routes/folders.js';
-import tagsRoutes from './routes/tags.js';
 import sharedRoutes from './routes/shared.js';
 import importExportRoutes from './routes/import-export.js';
 
@@ -42,7 +41,6 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', loginLimiter, authRoutes);
 app.use('/api/bookmarks', bookmarksRoutes);
 app.use('/api/folders', foldersRoutes);
-app.use('/api/tags', tagsRoutes);
 app.use('/api/shared', sharedRoutes);
 app.use('/api/io', importExportRoutes);
 

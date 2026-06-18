@@ -77,21 +77,6 @@ export function BookmarkCard({ bookmark, canEdit, onClick, onToggleFavorite, onT
               {folder.name}
             </span>
           )}
-          {(bookmark.tags || []).slice(0, 4).map(t => (
-            <span
-              key={t.id}
-              className="px-1.5 py-0.5 text-xs rounded border"
-              style={{
-                color: t.color || '#525252',
-                borderColor: t.color || '#e5e5e5',
-              }}
-            >
-              #{t.name}
-            </span>
-          ))}
-          {bookmark.tags.length > 4 && (
-            <span className="text-xs text-neutral-400">+{bookmark.tags.length - 4}</span>
-          )}
           {bookmark.is_shared && (
             <span className="px-1.5 py-0.5 text-xs text-green-600 bg-green-50 rounded" title="Publicly shared">
               Shared
