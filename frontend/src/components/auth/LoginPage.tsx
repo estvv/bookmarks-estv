@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { login, setToken } from '../../utils/auth';
 
 export function LoginPage() {
@@ -7,7 +7,6 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,8 +16,7 @@ export function LoginPage() {
     try {
       const { token } = await login(password);
       setToken(token);
-      const from = (location.state as any)?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Invalid password');
     } finally {
@@ -26,12 +24,16 @@ export function LoginPage() {
     }
   };
 
+  const handleSkip = () => {
+    navigate('/', { replace: true });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="max-w-md w-full px-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-neutral-900 mb-2">Bookmarks</h1>
-          <p className="text-neutral-600">Enter password to continue</p>
+          <p className="text-neutral-600">Enter password to manage bookmarks</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,6 +56,14 @@ export function LoginPage() {
             className="w-full px-4 py-3 bg-neutral-900 text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Logging in...' : 'Login'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSkip}
+            className="w-full px-4 py-3 text-neutral-600 hover:text-neutral-900 font-medium transition-colors"
+          >
+            Skip — Browse without editing
           </button>
         </form>
       </div>

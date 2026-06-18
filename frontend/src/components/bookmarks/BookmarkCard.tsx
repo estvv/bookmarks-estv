@@ -3,6 +3,7 @@ import { useData } from '../../contexts/DataContext';
 
 interface Props {
   bookmark: Bookmark;
+  canEdit: boolean;
   onClick: () => void;
   onToggleFavorite: () => void;
   onToggleRead: () => void;
@@ -34,7 +35,7 @@ function formatDate(s: string): string {
   return d.toLocaleDateString();
 }
 
-export function BookmarkCard({ bookmark, onClick, onToggleFavorite, onToggleRead, onShare, onUnshare, onDelete }: Props) {
+export function BookmarkCard({ bookmark, canEdit, onClick, onToggleFavorite, onToggleRead, onShare, onUnshare, onDelete }: Props) {
   const { folders } = useData();
   const folder = folders.find(f => f.id === bookmark.folder_id);
   const isFav = !!bookmark.is_favorite;
@@ -100,15 +101,6 @@ export function BookmarkCard({ bookmark, onClick, onToggleFavorite, onToggleRead
       </div>
 
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-          className={`p-1.5 rounded hover:bg-neutral-100 ${isFav ? 'text-yellow-500' : 'text-neutral-400 hover:text-neutral-700'}`}
-          title={isFav ? 'Unfavorite' : 'Favorite'}
-        >
-          <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.075 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-          </svg>
-        </button>
         <a
           href={bookmark.url}
           target="_blank"
@@ -121,45 +113,58 @@ export function BookmarkCard({ bookmark, onClick, onToggleFavorite, onToggleRead
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </a>
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleRead(); }}
-          className="p-1.5 rounded text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
-          title={isRead ? 'Mark as unread' : 'Mark as read'}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </button>
-        {bookmark.is_shared ? (
-          <button
-            onClick={(e) => { e.stopPropagation(); onUnshare(); }}
-            className="p-1.5 rounded text-green-500 hover:text-green-700 hover:bg-neutral-100"
-            title="Copy share link / disable sharing"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-          </button>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); onShare(); }}
-            className="p-1.5 rounded text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
-            title="Share publicly"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-          </button>
+        {canEdit && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+              className={`p-1.5 rounded hover:bg-neutral-100 ${isFav ? 'text-yellow-500' : 'text-neutral-400 hover:text-neutral-700'}`}
+              title={isFav ? 'Unfavorite' : 'Favorite'}
+            >
+              <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.075 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleRead(); }}
+              className="p-1.5 rounded text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+              title={isRead ? 'Mark as unread' : 'Mark as read'}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            {bookmark.is_shared ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onUnshare(); }}
+                className="p-1.5 rounded text-green-500 hover:text-green-700 hover:bg-neutral-100"
+                title="Copy share link / disable sharing"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); onShare(); }}
+                className="p-1.5 rounded text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+                title="Share publicly"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1.5 rounded text-neutral-400 hover:text-red-600 hover:bg-neutral-100"
+              title="Delete"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </>
         )}
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1.5 rounded text-neutral-400 hover:text-red-600 hover:bg-neutral-100"
-          title="Delete"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
       </div>
     </div>
   );

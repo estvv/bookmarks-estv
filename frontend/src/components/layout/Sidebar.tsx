@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { foldersApi, bookmarksApi } from '../../utils/api';
+import { foldersApi } from '../../utils/api';
+import { isAuthenticated } from '../../utils/auth';
 import { useData } from '../../contexts/DataContext';
 import type { Folder } from '../../types';
 
 export function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const authed = isAuthenticated();
   const {
     folders, tags, activeFolderId, setActiveFolderId,
     activeTagId, setActiveTagId, refreshData
@@ -134,35 +136,37 @@ export function Sidebar() {
             </span>
           </button>
 
-          <div className="opacity-0 group-hover:opacity-100 flex items-center transition-opacity">
-            <button
-              onClick={(e) => { e.stopPropagation(); handleNewBookmarkInFolder(folder.id); }}
-              className="text-neutral-400 hover:text-neutral-600 mr-1"
-              title="Add bookmark to folder"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleShareFolder(folder.id); }}
-              className={`mr-1 ${folder.is_shared ? 'text-green-500 hover:text-green-700' : 'text-neutral-400 hover:text-neutral-600'}`}
-              title={folder.is_shared ? 'Copy share link' : 'Share folder'}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-              className="text-neutral-400 hover:text-red-600"
-              title="Delete folder"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
+          {authed && (
+            <div className="opacity-0 group-hover:opacity-100 flex items-center transition-opacity">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleNewBookmarkInFolder(folder.id); }}
+                className="text-neutral-400 hover:text-neutral-600 mr-1"
+                title="Add bookmark to folder"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleShareFolder(folder.id); }}
+                className={`mr-1 ${folder.is_shared ? 'text-green-500 hover:text-green-700' : 'text-neutral-400 hover:text-neutral-600'}`}
+                title={folder.is_shared ? 'Copy share link' : 'Share folder'}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                className="text-neutral-400 hover:text-red-600"
+                title="Delete folder"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {isExpanded && children.length > 0 && (
@@ -191,15 +195,17 @@ export function Sidebar() {
 
           <div className="flex items-center justify-between mb-2 px-3 mt-4">
             <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Folders</span>
-            <button
-              onClick={() => setShowNewFolder(true)}
-              className="text-neutral-400 hover:text-neutral-600"
-              title="Create new folder"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
+            {authed && (
+              <button
+                onClick={() => setShowNewFolder(true)}
+                className="text-neutral-400 hover:text-neutral-600"
+                title="Create new folder"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {showNewFolder && (

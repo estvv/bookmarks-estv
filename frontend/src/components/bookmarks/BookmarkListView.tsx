@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { bookmarksApi } from '../../utils/api';
-import type { Bookmark, Folder, Tag } from '../../types';
+import { isAuthenticated } from '../../utils/auth';
+import type { Bookmark } from '../../types';
 import { BookmarkCard } from './BookmarkCard';
 import { BookmarkForm } from './BookmarkForm';
 
 export function BookmarkListView() {
   const { bookmarks, folders, tags, refreshData, activeFolderId, activeTagId } = useData();
   const navigate = useNavigate();
+  const authed = isAuthenticated();
   const [showAddForm, setShowAddForm] = useState(false);
 
   const activeFolder = folders.find(f => f.id === activeFolderId);
@@ -82,15 +84,17 @@ export function BookmarkListView() {
           <h1 className="text-xl font-bold text-neutral-900">{title}</h1>
           <p className="text-xs text-neutral-400 mt-0.5">{bookmarks.length} bookmark{bookmarks.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
-        >
-          + Add bookmark
-        </button>
+        {authed && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+          >
+            + Add bookmark
+          </button>
+        )}
       </div>
 
-      {showAddForm && (
+      {showAddForm && authed && (
         <BookmarkForm
           folders={folders}
           tags={tags}
@@ -111,6 +115,7 @@ export function BookmarkListView() {
             <BookmarkCard
               key={b.id}
               bookmark={b}
+              canEdit={authed}
               onClick={() => navigate(`/bookmark/${b.id}`)}
               onToggleFavorite={() => handleToggleFavorite(b)}
               onToggleRead={() => handleToggleRead(b)}

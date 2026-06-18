@@ -6,7 +6,6 @@ import {
 import type { BookmarkWithTags, Folder, Tag } from '../types/index.js';
 
 const router = Router();
-router.use(authMiddleware);
 
 function escapeHtml(str: string): string {
   return String(str)
@@ -62,6 +61,7 @@ function renderFolderNetscape(
   return out;
 }
 
+// Public: export (read-only)
 router.get('/export', (req: AuthRequest, res) => {
   const format = (req.query.format as string) || 'json';
 
@@ -140,8 +140,6 @@ function parseNetscape(html: string): { url: string; title: string; description?
   const aRegex = /<DT><A\s+HREF="([^"]*)"[^>]*>([\s\S]*?)<\/A>/i;
   const ddRegex = /<DD>(.*)/i;
 
-  let pendingDescription: string | undefined;
-
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
@@ -172,7 +170,6 @@ function parseNetscape(html: string): { url: string; title: string; description?
       const title = a[2].trim();
       const tagMatch = line.match(/TAGS="([^"]*)"/i);
       const tags = tagMatch ? tagMatch[1] : undefined;
-      pendingDescription = undefined;
       results.push({
         url,
         title: title || url,
@@ -193,19 +190,8 @@ function parseNetscape(html: string): { url: string; title: string; description?
   return results;
 }
 
-function ensureFolder(path: string[], createFolder: (name: string, parentId?: number) => any, getFolderByNameChild: (name: string, parentId: number | null) => any): number | null {
-  let parentId: number | null = null;
-  for (const name of path) {
-    let folder = getFolderByNameChild(name, parentId);
-    if (!folder) {
-      folder = createFolder(name, parentId || undefined);
-    }
-    parentId = folder.id;
-  }
-  return parentId;
-}
-
-router.post('/import', async (req: AuthRequest, res) => {
+// Auth required: import
+router.post('/import', authMiddleware, async (req: AuthRequest, res) => {
   const { format, data } = req.body;
 
   if (!data) {
@@ -219,7 +205,7 @@ router.post('/import', async (req: AuthRequest, res) => {
     if (format === 'netscape' || format === 'html' || (typeof data === 'string' && data.includes('<!DOCTYPE NETSCAPE'))) {
       const items = parseNetscape(typeof data === 'string' ? data : String(data));
 
-      const { createFolder, getFolders, getFolderById } = await import('../db/index.js');
+      const { createFolder, getFolders } = await import('../db/index.js');
 
       const allFolders = getFolders();
       const findChild = (name: string, parentId: number | null) =>
@@ -264,7 +250,7 @@ router.post('/import', async (req: AuthRequest, res) => {
       const tags: any[] = payload.tags || [];
       const bookmarks: any[] = payload.bookmarks || [];
 
-      const { createFolder, getFolderById } = await import('../db/index.js');
+      const { createFolder } = await import('../db/index.js');
 
       const folderIdMap = new Map<number, number>();
       const oldToNewFolder = (oldId: number): number | null => {

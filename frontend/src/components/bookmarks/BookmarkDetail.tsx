@@ -1,15 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { bookmarksApi, tagsApi, ioApi } from '../../utils/api';
+import { bookmarksApi, tagsApi } from '../../utils/api';
+import { isAuthenticated } from '../../utils/auth';
 import { useData } from '../../contexts/DataContext';
-import type { Bookmark, Tag } from '../../types';
+import type { Bookmark } from '../../types';
+
+function hostname(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+}
 
 export function BookmarkDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { folders, tags, refreshData } = useData();
+  const authed = isAuthenticated();
   const isNew = id === 'new';
+
+  // /bookmark/new requires auth — redirect to login
+  useEffect(() => {
+    if (isNew && !authed) {
+      navigate('/login', { replace: true });
+    }
+  }, [isNew, authed, navigate]);
 
   const [bookmark, setBookmark] = useState<Bookmark | null>(null);
   const [url, setUrl] = useState('');
@@ -22,7 +35,6 @@ export function BookmarkDetail() {
   const [isRead, setIsRead] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     if (isNew) {
@@ -140,10 +152,10 @@ export function BookmarkDetail() {
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-neutral-900">
-          {isNew ? 'New bookmark' : 'Edit bookmark'}
+          {isNew ? 'New bookmark' : authed ? 'Edit bookmark' : 'Bookmark'}
         </h1>
         <div className="flex gap-2">
-          {bookmark?.is_shared && (
+          {authed && bookmark?.is_shared && (
             <button
               onClick={handleShare}
               className="px-3 py-2 text-sm text-green-600 border border-green-200 rounded-lg hover:bg-green-50"
@@ -160,6 +172,53 @@ export function BookmarkDetail() {
         </div>
       </div>
 
+      {!authed && bookmark ? (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            {bookmark.favicon && (
+              <img src={bookmark.favicon} alt="" className="w-8 h-8 rounded" onError={(e) => (e.currentTarget.style.display = 'none')} />
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-neutral-900">{bookmark.title}</h2>
+              <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                {hostname(bookmark.url)}
+              </a>
+            </div>
+          </div>
+          {bookmark.description && (
+            <div>
+              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Description</div>
+              <p className="text-sm text-neutral-700 whitespace-pre-wrap">{bookmark.description}</p>
+            </div>
+          )}
+          {bookmark.tags.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Tags</div>
+              <div className="flex flex-wrap gap-1.5">
+                {bookmark.tags.map(t => (
+                  <span
+                    key={t.id}
+                    className="px-2 py-0.5 text-xs rounded border"
+                    style={{ color: t.color || '#525252', borderColor: t.color || '#e5e5e5' }}
+                  >
+                    #{t.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="pt-4">
+            <a
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-4 py-2 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+            >
+              Open link →
+            </a>
+          </div>
+        </div>
+      ) : (
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">URL *</label>
@@ -289,6 +348,7 @@ export function BookmarkDetail() {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -7,8 +7,7 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware);
-
+// Public: list folders
 router.get('/', (req, res) => {
   const folders = getFolders().map(f => ({
     ...f,
@@ -17,7 +16,8 @@ router.get('/', (req, res) => {
   res.json({ success: true, data: folders });
 });
 
-router.post('/', (req, res) => {
+// Auth required: create folder
+router.post('/', authMiddleware, (req, res) => {
   const { name, parent_id } = req.body;
 
   if (!name) {
@@ -38,7 +38,8 @@ router.post('/', (req, res) => {
   res.json({ success: true, data: folder });
 });
 
-router.put('/:id', (req, res) => {
+// Auth required: update folder
+router.put('/:id', authMiddleware, (req, res) => {
   const { name } = req.body;
   if (!name) {
     return res.status(400).json({ success: false, error: 'Name required' });
@@ -47,18 +48,21 @@ router.put('/:id', (req, res) => {
   res.json({ success: true, data: folder });
 });
 
-router.delete('/:id', (req, res) => {
+// Auth required: delete folder (cascade deletes bookmarks)
+router.delete('/:id', authMiddleware, (req, res) => {
   deleteFolder(parseInt(req.params.id));
   res.json({ success: true });
 });
 
-router.post('/:id/share', (req, res) => {
+// Auth required: share folder
+router.post('/:id/share', authMiddleware, (req, res) => {
   const id = parseInt(req.params.id);
   const token = generateFolderShareToken(id);
   res.json({ success: true, data: { share_token: token } });
 });
 
-router.delete('/:id/share', (req, res) => {
+// Auth required: disable sharing
+router.delete('/:id/share', authMiddleware, (req, res) => {
   disableFolderSharing(parseInt(req.params.id));
   res.json({ success: true });
 });

@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { bookmarksApi, foldersApi, tagsApi } from '../utils/api';
-import { isAuthenticated } from '../utils/auth';
 import type { Bookmark, Folder, Tag, SortOption } from '../types';
 
 interface DataContextValue {
@@ -38,11 +37,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [sort, setSort] = useState<SortOption>('created_desc');
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      refreshData();
-    } else {
-      setLoading(false);
-    }
+    refreshData();
   }, []);
 
   const refreshData = async () => {
@@ -64,7 +59,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!isAuthenticated()) return;
     let cancelled = false;
 
     const loadBookmarks = async () => {

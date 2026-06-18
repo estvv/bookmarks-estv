@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '../../utils/auth';
+import { logout, isAuthenticated } from '../../utils/auth';
 import { useData } from '../../contexts/DataContext';
 import type { SortOption } from '../../types';
 
@@ -14,13 +13,13 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 export function Header() {
   const navigate = useNavigate();
+  const authed = isAuthenticated();
   const {
     searchQuery, setSearchQuery,
     sort, setSort,
     showFavoritesOnly, setShowFavoritesOnly,
     showUnreadOnly, setShowUnreadOnly,
   } = useData();
-  const [showAdd, setShowAdd] = useState(false);
 
   return (
     <header className="h-16 border-b border-neutral-200 flex items-center px-6 gap-4">
@@ -69,19 +68,29 @@ export function Header() {
         </button>
       </div>
 
-      <button
-        onClick={() => navigate('/bookmark/new')}
-        className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
-      >
-        + Add
-      </button>
-
-      <button
-        onClick={() => { logout(); navigate('/login'); }}
-        className="px-4 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
-      >
-        Logout
-      </button>
+      {authed ? (
+        <>
+          <button
+            onClick={() => navigate('/bookmark/new')}
+            className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+          >
+            + Add
+          </button>
+          <button
+            onClick={() => { logout(); navigate('/'); }}
+            className="px-4 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
+          >
+            Logout
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={() => navigate('/login')}
+          className="px-4 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
+        >
+          Login
+        </button>
+      )}
     </header>
   );
 }
